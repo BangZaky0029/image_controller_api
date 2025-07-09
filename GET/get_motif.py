@@ -1,5 +1,8 @@
 from flask import Blueprint, jsonify
-from ..dashboard.db import get_connection
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dashboard.db import get_connection
 
 get_motif_bp = Blueprint('get_motif_bp', __name__)
 

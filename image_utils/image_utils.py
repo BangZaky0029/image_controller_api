@@ -1,5 +1,6 @@
-
+import sys
 import os
+sys.path.append(os.path.abspath('D:/image_processing_api/src'))
 import io
 import re
 import torch
@@ -10,11 +11,10 @@ from flask_cors import CORS
 from datetime import datetime
 
 # Modular imports
-from image_processing_api.src.font_controllers.font_color import COLOR_OPTIONS
-from image_processing_api.src.font_controllers.font_style import get_font
-from image_processing_api.src.font_controllers.font_position import calculate_text_position
-from image_processing_api.src.path_controllers.path import get_save_path
 
+from font_controllers.font_color import COLOR_OPTIONS 
+from font_controllers.font_style import get_font 
+from font_controllers.font_position import calculate_text_position
 
 # Load YOLOv5 model (once)
 model = None
@@ -64,6 +64,7 @@ def process_image_file(image_path, id_print, product_note, type_product, qty, na
             img_rgb = np.array(image_pil.convert("RGB"))
             results = detection_model(img_rgb)
             detections = results.pandas().xyxy[0]
+            print(detections[['name', 'confidence']])  # tambahkan ini
 
             font_main = get_font(size=min(260, image_pil.width // 5))
             for _, row in detections.iterrows():

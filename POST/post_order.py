@@ -1,9 +1,12 @@
 # D:\image_controller_api\POST\post_order.py
 
-from flask import Blueprint, request, jsonify
-from ..dashboard.db import get_connection
+from flask import Blueprint, jsonify, request
 from datetime import datetime
-from image_controller_api.utils.image_utils import process_image_file
+import json
+import sys
+import os
+from dashboard.db import get_connection
+from image_utils.image_utils import process_image_file
 
 post_order_bp = Blueprint('post_order', __name__)
 

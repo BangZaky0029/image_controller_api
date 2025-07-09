@@ -59,5 +59,62 @@ def create_app():
             print(f"Error serving image {filename}: {e}")
             # Return placeholder image jika file tidak ditemukan
             return '', 404
+    
+    # ✅ Static file serving untuk CSS dan JS files
+    @app.route('/style/<path:filename>')
+    def serve_css(filename):
+        try:
+            # Path ke folder style di frontend
+            style_directory = r'D:\image_interFace_db\style'
+            response = send_from_directory(style_directory, filename)
+            # Set proper MIME type untuk CSS files
+            if filename.endswith('.css'):
+                response.headers['Content-Type'] = 'text/css'
+            return response
+        except Exception as e:
+            print(f"Error serving CSS file {filename}: {e}")
+            return '', 404
+    
+    @app.route('/js/<path:filename>')
+    def serve_js(filename):
+        try:
+            # Path ke folder js di frontend
+            js_directory = r'D:\image_interFace_db\js'
+            response = send_from_directory(js_directory, filename)
+            # Set proper MIME type untuk JS files
+            if filename.endswith('.js'):
+                response.headers['Content-Type'] = 'application/javascript'
+            return response
+        except Exception as e:
+            print(f"Error serving JS file {filename}: {e}")
+            return '', 404
+    
+    @app.route('/config/<path:filename>')
+    def serve_config(filename):
+        try:
+            # Path ke folder config di frontend
+            config_directory = r'D:\image_interFace_db\config'
+            response = send_from_directory(config_directory, filename)
+            # Set proper MIME type untuk JS files
+            if filename.endswith('.js'):
+                response.headers['Content-Type'] = 'application/javascript'
+            return response
+        except Exception as e:
+            print(f"Error serving config file {filename}: {e}")
+            return '', 404
+    
+    @app.route('/views/<path:filename>')
+    def serve_views(filename):
+        try:
+            # Path ke folder views di frontend
+            views_directory = r'D:\image_interFace_db\views'
+            response = send_from_directory(views_directory, filename)
+            # Set proper MIME type untuk HTML files
+            if filename.endswith('.html'):
+                response.headers['Content-Type'] = 'text/html'
+            return response
+        except Exception as e:
+            print(f"Error serving view file {filename}: {e}")
+            return '', 404
 
     return app

@@ -1,6 +1,8 @@
 import os
 from flask import Blueprint, request, jsonify
-from ..dashboard.db import get_connection
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dashboard.db import get_connection
 
 delete_order_bp = Blueprint('delete_order', __name__)
 
@@ -50,3 +52,4 @@ def delete_order(id_order):
     finally:
         cursor.close()
         conn.close()
+

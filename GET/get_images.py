@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request
-from ..dashboard.db import get_connection
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from dashboard.db import get_connection
 
 
 get_images_bp = Blueprint('get_images_bp', __name__)
