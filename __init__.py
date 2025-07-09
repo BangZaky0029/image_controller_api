@@ -1,5 +1,6 @@
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS  # ✅ Tambahkan ini
+import os
 
 
 from .GET import (
@@ -46,5 +47,17 @@ def create_app():
 
     # ✅ Register DELETE blueprint
     app.register_blueprint(delete_order_bp)
+
+    # ✅ Static file serving untuk gambar
+    @app.route('/static/images/<path:filename>')
+    def serve_image(filename):
+        try:
+            # Path ke folder gambar
+            image_directory = r'D:\assets\database_images'
+            return send_from_directory(image_directory, filename)
+        except Exception as e:
+            print(f"Error serving image {filename}: {e}")
+            # Return placeholder image jika file tidak ditemukan
+            return '', 404
 
     return app
