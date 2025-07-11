@@ -92,3 +92,57 @@ def create_order():
     finally:
         cursor.close()
         conn.close()
+
+
+@post_order_bp.route('/api/order/preview', methods=['POST'])
+def preview_order():
+    data = request.json
+    id_image = data.get('id_image')
+    nama = data.get('nama')
+    qty = data.get('qty', 1)
+    type_product = data.get('type_product')
+    product_note = data.get('product_note', '')
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT image_path FROM images WHERE id_image = %s", (id_image,))
+        image = cursor.fetchone()
+        image_path = image['image_path'] if image else None
+        if not image_path:
+            return jsonify({"error": "Image not found"}), 404
+
+        now = datetime.now()
+        ymd = now.strftime('%Y%m%d')
+        preview_dir = os.path.join('D:/assets/PREVIEW', ymd)
+        os.makedirs(preview_dir, exist_ok=True)
+        id_print = f"PREVIEW-{id_image}-{now.strftime('%H%M%S')}"
+        processed_path, output_filename = process_image_file(
+            image_path=image_path,
+            id_print=id_print,
+            product_note=product_note,
+            type_product=type_product,
+            qty=qty,
+            nama=nama,
+            font_color_name="black"
+        )
+        if not processed_path:
+            return jsonify({"error": "Failed to process image"}), 500
+        # Move/copy to preview_dir if needed
+        preview_path = os.path.join(preview_dir, output_filename)
+        if processed_path != preview_path:
+            import shutil
+            shutil.copy2(processed_path, preview_path)
+        preview_url = f"http://localhost:5000/preview/{ymd}/{output_filename}"
+        return jsonify({"preview_url": preview_url})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+from flask import send_from_directory
+@post_order_bp.route('/preview/<path:filename>')
+def serve_preview(filename):
+    preview_root = os.path.join('D:/assets/PREVIEW')
+    return send_from_directory(preview_root, filename)
