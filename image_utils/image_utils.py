@@ -34,7 +34,7 @@ prefix = "Sample_"
 ext = ".jpg"
 
 
-def process_image_file(image_path, id_print, product_note, type_product, qty, nama, font_color_name="black"):
+def process_image_file(image_path, id_print, product_note, type_product, qty, nama, font_color_name="black", is_preview=False):
     try:
         print(f"Proses image: {image_path}, nama: {nama}")
 
@@ -83,30 +83,34 @@ def process_image_file(image_path, id_print, product_note, type_product, qty, na
             text_y = (image_pil.height - (text_bbox[3] - text_bbox[1])) // 2
             draw.text((text_x, text_y), nama, font=font_main, fill=font_color)
 
-        # 📂 Direktori simpan
-        now = datetime.now()
-        month = now.strftime('%B').upper()
-        day = now.strftime('%d')
-        base_dir = r"D:/assets/PRINT"
-
-        # ✂️ Ambil nama product dari path image
-        path_parts = os.path.normpath(image_path).split(os.sep)
-        product = path_parts[-3] if len(path_parts) >= 3 else "UnknownProduct"
-
-        # 📁 Gabung jadi folder lengkap: /PRINT/JULY/08/MARSOTO
-        target_dir = os.path.join(base_dir, month, day, product)
-        os.makedirs(target_dir, exist_ok=True)
-
         # 🧾 Ambil nama file asli
         image_filename = os.path.splitext(os.path.basename(image_path))[0]  # HM0001
         output_filename = f"{id_print}_{image_filename}.jpg"
-        output_path = os.path.join(target_dir, output_filename)
 
-        # 💾 Simpan
-        image_pil.save(output_path, format='JPEG', quality=95, dpi=dpi, icc_profile=icc_profile)
-        print(f"[✅] Gambar disimpan ke: {output_path}")
+        if is_preview:
+            return None, output_filename, image_pil, dpi, icc_profile
+        else:
+            # 📂 Direktori simpan
+            now = datetime.now()
+            month = now.strftime('%B').upper()
+            day = now.strftime('%d')
+            base_dir = r"D:/assets/PRINT"
 
-        return output_path, output_filename
+            # ✂️ Ambil nama product dari path image
+            path_parts = os.path.normpath(image_path).split(os.sep)
+            product = path_parts[-3] if len(path_parts) >= 3 else "UnknownProduct"
+
+            # 📁 Gabung jadi folder lengkap: /PRINT/JULY/08/MARSOTO
+            target_dir = os.path.join(base_dir, month, day, product)
+            os.makedirs(target_dir, exist_ok=True)
+
+            output_path = os.path.join(target_dir, output_filename)
+
+            # 💾 Simpan
+            image_pil.save(output_path, format='JPEG', quality=95, dpi=dpi, icc_profile=icc_profile)
+            print(f"[✅] Gambar disimpan ke: {output_path}")
+
+            return output_path, output_filename, None, None, None
 
 
     except Exception as e:

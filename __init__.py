@@ -19,7 +19,8 @@ from .POST import (
 )
 
 from .DELETE import (
-    delete_order_bp
+    delete_order_bp,
+    delete_preview_bp
 )
 
 def create_app():
@@ -47,6 +48,7 @@ def create_app():
 
     # ✅ Register DELETE blueprint
     app.register_blueprint(delete_order_bp)
+    app.register_blueprint(delete_preview_bp)
 
     # ✅ Static file serving untuk gambar
     @app.route('/static/images/<path:filename>')

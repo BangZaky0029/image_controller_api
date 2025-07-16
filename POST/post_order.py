@@ -1,10 +1,12 @@
 # D:\image_controller_api\POST\post_order.py
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory
 from datetime import datetime
 import json
 import sys
 import os
+import socket
+import shutil
 from dashboard.db import get_connection
 from image_utils.image_utils import process_image_file
 
@@ -62,14 +64,15 @@ def create_order():
                 for k in range(1, sisi + 1):
                     id_print = f"{id_order_detail}-({j})-[{k}]"
 
-                    processed_path, output_filename = process_image_file(
+                    processed_path, output_filename, _, _, _ = process_image_file(
                         image_path=image_path,
                         id_print=id_print,
                         product_note=item['product_note'],
                         type_product=item['type_product'],
                         qty=item['qty'],
                         nama=item['nama'],
-                        font_color_name="black"
+                        font_color_name="black",
+                        is_preview=False
                     )
 
                     cursor.execute("""
@@ -105,44 +108,173 @@ def preview_order():
 
     conn = get_connection()
     cursor = conn.cursor()
+    
     try:
+        # Ambil image path dari database
         cursor.execute("SELECT image_path FROM images WHERE id_image = %s", (id_image,))
         image = cursor.fetchone()
         image_path = image['image_path'] if image else None
+        
         if not image_path:
             return jsonify({"error": "Image not found"}), 404
 
+        # Setup preview directory
         now = datetime.now()
         ymd = now.strftime('%Y%m%d')
         preview_dir = os.path.join('D:/assets/PREVIEW', ymd)
         os.makedirs(preview_dir, exist_ok=True)
+        
+        # Generate unique preview ID
         id_print = f"PREVIEW-{id_image}-{now.strftime('%H%M%S')}"
-        processed_path, output_filename = process_image_file(
+        
+        # Process image
+        processed_path, output_filename, image_pil, dpi, icc_profile = process_image_file(
             image_path=image_path,
             id_print=id_print,
             product_note=product_note,
             type_product=type_product,
             qty=qty,
             nama=nama,
-            font_color_name="black"
+            font_color_name="black",
+            is_preview=True
         )
-        if not processed_path:
+        
+        if not output_filename:
             return jsonify({"error": "Failed to process image"}), 500
-        # Move/copy to preview_dir if needed
+
+        # Save processed image to preview directory
         preview_path = os.path.join(preview_dir, output_filename)
-        if processed_path != preview_path:
-            import shutil
-            shutil.copy2(processed_path, preview_path)
-        preview_url = f"http://localhost:5000/preview/{ymd}/{output_filename}"
-        return jsonify({"preview_url": preview_url})
+        if image_pil:
+            image_pil.save(preview_path, format='JPEG', quality=95, dpi=dpi, icc_profile=icc_profile)
+        else:
+            if processed_path and processed_path != preview_path:
+                shutil.copy2(processed_path, preview_path)
+
+        # # Generate preview URL (using IP address for network access)
+        # try:
+        #     ip_address = socket.gethostbyname(socket.gethostname())
+        # except:
+        #     ip_address = "localhost"  # fallback if can't get IP
+        
+        ip_address = "127.0.0.1"
+        preview_url = f"http://{ip_address}:5000/preview/{ymd}/{output_filename}"
+        
+        # Save to preview table
+        cursor.execute("""
+            INSERT INTO preview (id_image, id_print, preview_path, preview_url, product_note, type_product, qty, nama)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            id_image,
+            id_print,
+            preview_path,
+            preview_url,
+            product_note,
+            type_product,
+            qty,
+            nama
+        ))
+        
+        conn.commit()
+        
+        return jsonify({
+            "preview_url": preview_url,
+            "id_print": id_print,
+            "message": "Preview berhasil dibuat"
+        })
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@post_order_bp.route('/preview/<path:filename>')
+def serve_preview(filename):
+    """Serve preview images from D:/assets/PREVIEW directory"""
+    preview_root = 'D:/assets/PREVIEW'
+    return send_from_directory(preview_root, filename)
+
+
+@post_order_bp.route('/api/preview/list', methods=['GET'])
+def list_previews():
+    """Get list of all previews"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT p.*, i.image_name 
+            FROM preview p 
+            LEFT JOIN images i ON p.id_image = i.id_image 
+            ORDER BY p.timestamp DESC
+        """)
+        
+        previews = cursor.fetchall()
+        
+        return jsonify({
+            "previews": previews,
+            "total": len(previews)
+        })
+        
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         conn.close()
 
-from flask import send_from_directory
-@post_order_bp.route('/preview/<path:filename>')
-def serve_preview(filename):
-    preview_root = os.path.join('D:/assets/PREVIEW')
-    return send_from_directory(preview_root, filename)
+
+@post_order_bp.route('/api/preview/<int:id_preview>', methods=['GET', 'DELETE'])
+def handle_preview(id_preview):
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        try:
+            cursor.execute("""
+                SELECT p.*, i.image_name 
+                FROM preview p 
+                LEFT JOIN images i ON p.id_image = i.id_image 
+                WHERE p.id_preview = %s
+            """, (id_preview,))
+            
+            preview = cursor.fetchone()
+            
+            if not preview:
+                return jsonify({"error": "Preview not found"}), 404
+                
+            return jsonify(preview)
+            
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+    
+    elif request.method == 'DELETE':
+        try:
+            # Get preview info first
+            cursor.execute("SELECT preview_path FROM preview WHERE id_preview = %s", (id_preview,))
+            preview = cursor.fetchone()
+            
+            if not preview:
+                return jsonify({"error": "Preview not found"}), 404
+            
+            # Delete file if exists
+            preview_path = preview['preview_path']
+            if os.path.exists(preview_path):
+                os.remove(preview_path)
+            
+            # Delete from database
+            cursor.execute("DELETE FROM preview WHERE id_preview = %s", (id_preview,))
+            conn.commit()
+            
+            return jsonify({"message": "Preview berhasil dihapus"})
+            
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"error": str(e)}), 500
+        finally:
+            cursor.close()
+            conn.close()
