@@ -71,7 +71,7 @@ def create_order():
                         type_product=item['type_product'],
                         qty=item['qty'],
                         nama=item['nama'],
-                        font_color_name="black",
+                        font_color=item.get('font_color', '#000000'),
                         is_preview=False
                     )
 
@@ -135,7 +135,7 @@ def preview_order():
             type_product=type_product,
             qty=qty,
             nama=nama,
-            font_color_name="black",
+            font_color=data.get('font_color', '#000000'),
             is_preview=True
         )
         
