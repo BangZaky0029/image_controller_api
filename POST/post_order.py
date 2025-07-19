@@ -156,7 +156,7 @@ def preview_order():
         # except:
         #     ip_address = "localhost"  # fallback if can't get IP
         
-        ip_address = "127.0.0.1"
+        ip_address = "100.124.58.32"
         preview_url = f"http://{ip_address}:5000/preview/{ymd}/{output_filename}"
         
         # Save to preview table
