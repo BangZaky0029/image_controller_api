@@ -1,0 +1,9 @@
+http://localhost:5000/images
+http://localhost:5000/motif
+http://localhost:5000/products
+http://localhost:5000/sizes
+
+http://localhost:5000/admin
+http://localhost:5000/orders
+http://localhost:5000/order_detail
+http://localhost:5000/print
