@@ -74,6 +74,7 @@ def create_order():
                         type_product=item['type_product'],
                         qty=item['qty'],
                         nama=item['nama'],
+                        id_input=id_order,  # Tambahkan id_order sebagai id_input
                         font_color=item.get('font_color', '#000000'),
                         is_preview=False
                     )

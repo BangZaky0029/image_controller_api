@@ -37,3 +37,19 @@ def get_connection():
 # 2. Perbaikan Server Error 500 pada /api/order/create
 
 # Perbaikan di db.py untuk menangani koneksi database
+
+def get_all_order_ids():
+    """
+    Mengambil semua id_order dari database
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id_order FROM orders")
+            results = cursor.fetchall()
+            return [result['id_order'] for result in results]
+    except Exception as e:
+        print(f"Error getting order IDs: {e}")
+        return []
+    finally:
+        conn.close()

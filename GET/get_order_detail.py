@@ -10,7 +10,14 @@ get_order_detail_bp = Blueprint('get_order_detail_bp', __name__)
 def get_order_detail():
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM order_detail")
+    
+    # Join order_detail with orders table to get order information
+    cursor.execute("""
+        SELECT od.*, o.platform, o.deadline, o.nama_customer, o.timestamp, o.status_print 
+        FROM order_detail od
+        LEFT JOIN orders o ON od.id_order = o.id_order
+    """)
+    
     data = cursor.fetchall()
     cursor.close()
     conn.close()

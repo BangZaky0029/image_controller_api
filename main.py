@@ -110,6 +110,22 @@ def create_app():
         except Exception as e:
             print(f"Error serving view file {filename}: {e}")
             return '', 404
+    
+    @app.route('/index.html')
+    def serve_index():
+        try:
+            return send_from_directory(r'D:\image_interFace_db', 'index.html')
+        except Exception as e:
+            print(f"Error serving index.html: {e}")
+            return '', 404
+    
+    @app.route('/')
+    def serve_root():
+        try:
+            return send_from_directory(r'D:\image_interFace_db', 'index.html')
+        except Exception as e:
+            print(f"Error serving root: {e}")
+            return '', 404
 
     return app
 

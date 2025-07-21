@@ -11,6 +11,7 @@ from flask_cors import CORS
 from datetime import datetime
 import arabic_reshaper
 from bidi.algorithm import get_display
+from .controllers.image_path_controller import get_output_image_path
 
 # Modular imports
 
@@ -67,7 +68,7 @@ def draw_text_with_fallback(draw, x, y, text, main_font, fallback_font, fill):
         current_x += font.getbbox(char)[2] - font.getbbox(char)[0]
 
 
-def process_image_file(image_path, id_print, product_note, type_product, qty, nama, font_color="#000000", is_preview=False):
+def process_image_file(image_path, id_print, product_note, type_product, qty, nama, id_input=None, font_color="#000000", is_preview=False):
     try:
         print(f"Proses image: {image_path}, nama: {nama}")
 
@@ -98,7 +99,7 @@ def process_image_file(image_path, id_print, product_note, type_product, qty, na
             img_rgb = np.array(image_pil.convert("RGB"))
             results = detection_model(img_rgb)
             detections = results.pandas().xyxy[0]
-            print(detections[['name', 'confidence']])  # tambahkan ini
+            print(detections[['name', 'confidence']])
 
             font_main = get_font(size=min(260, image_pil.width // 5))
             emoji_font = get_emoji_font(size=min(260, image_pil.width // 5))
@@ -127,29 +128,12 @@ def process_image_file(image_path, id_print, product_note, type_product, qty, na
         if is_preview:
             return None, output_filename, image_pil, dpi, icc_profile
         else:
-            # 📂 Direktori simpan
-            now = datetime.now()
-            month = now.strftime('%B').upper()
-            day = now.strftime('%d')
+            # 📂 Direktori simpan pakai controller baru
             base_dir = r"D:/assets/PRINT"
-
-            # ✂️ Ambil nama product dari path image
-            path_parts = os.path.normpath(image_path).split(os.sep)
-            product = path_parts[-3] if len(path_parts) >= 3 else "UnknownProduct"
-
-            # 📁 Gabung jadi folder lengkap: /PRINT/JULY/08/MARSOTO
-            target_dir = os.path.join(base_dir, month, day, product)
-            os.makedirs(target_dir, exist_ok=True)
-
-            output_path = os.path.join(target_dir, output_filename)
-
-            # 💾 Simpan
+            output_path, output_filename = get_output_image_path(base_dir, id_input, id_print, image_path)
             image_pil.save(output_path, format='JPEG', quality=95, dpi=dpi, icc_profile=icc_profile)
             print(f"[✅] Gambar disimpan ke: {output_path}")
-
             return output_path, output_filename, None, None, None
-
-
     except Exception as e:
         print(f"[ERROR] Gagal proses image: {str(e)}")
         return None, None, None, None, None
