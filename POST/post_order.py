@@ -15,10 +15,13 @@ post_order_bp = Blueprint('post_order', __name__)
 @post_order_bp.route('/api/order/create', methods=['POST'])
 def create_order():
     data = request.json
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
     try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
         now = datetime.now()
         prefix = now.strftime("%m") + now.strftime("%y")  # e.g. 0725
 
@@ -89,12 +92,18 @@ def create_order():
         return jsonify({"message": "Order berhasil dibuat", "id_order": id_order}), 201
 
     except Exception as e:
-        conn.rollback()
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in create_order: {str(e)}\n{error_details}")
+        if conn:
+            conn.rollback()
+        return jsonify({"error": str(e), "details": error_details}), 500
 
     finally:
-        cursor.close()
-        conn.close()
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 
 @post_order_bp.route('/api/order/preview', methods=['POST'])
@@ -150,14 +159,12 @@ def preview_order():
             if processed_path and processed_path != preview_path:
                 shutil.copy2(processed_path, preview_path)
 
-        # # Generate preview URL (using IP address for network access)
-        # try:
-        #     ip_address = socket.gethostbyname(socket.gethostname())
-        # except:
-        #     ip_address = "localhost"  # fallback if can't get IP
+        # Gunakan URL relatif dan host dari request untuk mendukung semua IP
+        host = request.host
+        preview_url = f"http://{host}/preview/{ymd}/{output_filename}"
         
-        ip_address = "100.124.58.32"
-        preview_url = f"http://{ip_address}:5000/preview/{ymd}/{output_filename}"
+        # Untuk kompatibilitas dengan kode lama, simpan juga URL alternatif
+        preview_urls = [preview_url]
         
         # Save to preview table
         cursor.execute("""
@@ -173,6 +180,14 @@ def preview_order():
             qty,
             nama
         ))
+        
+        # Tambahkan URL alternatif jika ada lebih dari satu IP
+        for i in range(1, len(preview_urls)):
+            alt_url = preview_urls[i]
+            cursor.execute("""
+                INSERT INTO preview_alt_urls (id_print, preview_url)
+                VALUES (%s, %s)
+            """, (id_print, alt_url))
         
         conn.commit()
         
