@@ -6,6 +6,7 @@ from .get_admin import get_admin_bp
 from .get_orders import get_orders_bp
 from .get_order_detail import get_order_detail_bp
 from .get_print import get_print_bp
+from .get_images_path import get_images_path_bp
 
 __all__ = [
     "get_images_bp",
@@ -15,5 +16,6 @@ __all__ = [
     "get_admin_bp",
     "get_orders_bp",
     "get_order_detail_bp",
-    "get_print_bp"
+    "get_print_bp",
+    "get_images_path_bp"
 ]

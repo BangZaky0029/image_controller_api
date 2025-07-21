@@ -15,7 +15,8 @@ from GET import (
     get_admin_bp,
     get_orders_bp,
     get_order_detail_bp,
-    get_print_bp
+    get_print_bp,
+    get_images_path_bp
 )
 
 from POST import (
@@ -40,6 +41,7 @@ def create_app():
     app.register_blueprint(get_orders_bp)
     app.register_blueprint(get_order_detail_bp)
     app.register_blueprint(get_print_bp)
+    app.register_blueprint(get_images_path_bp)
 
     # Register POST blueprint
     app.register_blueprint(post_order_bp)
