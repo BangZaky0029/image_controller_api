@@ -68,7 +68,7 @@ def draw_text_with_fallback(draw, x, y, text, main_font, fallback_font, fill):
         current_x += font.getbbox(char)[2] - font.getbbox(char)[0]
 
 
-def process_image_file(image_path, id_print, product_note, type_product, qty, nama, id_input=None, font_color="#000000", is_preview=False):
+def process_image_file(image_path, id_print, product_note, type_product, qty, nama, id_input=None, font_color="#000000", is_preview=False, is_side_one=True):
     try:
         print(f"Proses image: {image_path}, nama: {nama}")
 
@@ -84,7 +84,8 @@ def process_image_file(image_path, id_print, product_note, type_product, qty, na
         category = path_parts[-2] if len(path_parts) >= 2 else "UnknownCategory"
 
         # 📝 Format header
-        header_text = f"{id_print} ({product}-{category}, {type_product}), {qty} PCS, {product_note}"
+        side_text = "SISI 1" if is_side_one else "SISI 2"
+        header_text = f"{id_print} ({product}-{category}, {type_product}, {side_text}), {qty} PCS, {product_note}"
 
         # Header
         header_font = get_font(size=60)
@@ -112,6 +113,8 @@ def process_image_file(image_path, id_print, product_note, type_product, qty, na
                     text_height = text_bbox[3] - text_bbox[1]
                     text_x, text_y = calculate_text_position((xmin, ymin, xmax, ymax), (text_width, text_height))
                     draw_text_with_fallback(draw, text_x, text_y, nama, font_main, emoji_font, font_color_rgb)
+                    
+
                     break
         else:
             font_main = get_font(size=100)
@@ -120,6 +123,8 @@ def process_image_file(image_path, id_print, product_note, type_product, qty, na
             text_x = (image_pil.width - text_width) // 2
             text_y = (image_pil.height - text_height) // 2
             draw_text_with_fallback(draw, text_x, text_y, nama, font_main, emoji_font, font_color_rgb)
+            
+
 
         # 🧾 Ambil nama file asli
         image_filename = os.path.splitext(os.path.basename(image_path))[0]  # HM0001

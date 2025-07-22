@@ -1,5 +1,5 @@
 # D:\image_controller_api\POST\post_order.py
-
+# POST order
 from flask import Blueprint, jsonify, request, send_from_directory
 from datetime import datetime
 import json
@@ -45,12 +45,13 @@ def create_order():
             id_order_detail = f"{id_order}-{i}"
 
             cursor.execute("""
-                INSERT INTO order_detail (id_order_detail, id_order, nama, id_image, type_product, qty, product_note)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO order_detail (id_order_detail, id_order, nama, second_name, id_image, type_product, qty, product_note)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 id_order_detail,
                 id_order,
                 item['nama'],
+                item['second_name'],
                 item['id_image'],
                 item['type_product'],
                 item['qty'],
@@ -61,29 +62,64 @@ def create_order():
             image = cursor.fetchone()
             image_path = image['image_path'] if image else None
 
-            sisi = 2 if "2 SISI" in item['type_product'].upper() else 1
-
+            is_two_sided = "2 SISI" in item['type_product'].upper()
+            has_second_name = item.get('second_name') and item['second_name'].strip() != ''
+            
             for j in range(1, item['qty'] + 1):
-                for k in range(1, sisi + 1):
-                    id_print = f"{id_order_detail}-({j})-[{k}]"
-
+                # Sisi pertama - selalu menggunakan nama
+                id_print_side1 = f"{id_order_detail}-({j})-[1]"
+                
+                processed_path, output_filename, _, _, _ = process_image_file(
+                    image_path=image_path,
+                    id_print=id_print_side1,
+                    product_note=item['product_note'],
+                    type_product=item['type_product'],
+                    qty=item['qty'],
+                    nama=item['nama'],
+                    id_input=id_order,
+                    font_color=item.get('font_color', '#000000'),
+                    is_preview=False,
+                    is_side_one=True
+                )
+                
+                # Insert record untuk sisi pertama
+                cursor.execute("""
+                    INSERT INTO print (id_print, id_order_detail, print_image_path, status)
+                    VALUES (%s, %s, %s, %s)
+                """, (
+                    id_print_side1,
+                    id_order_detail,
+                    processed_path,
+                    'belum_diprint'
+                ))
+                
+                # Sisi kedua - jika 2 sisi, gunakan second_name jika ada, jika tidak gunakan nama
+                if is_two_sided:
+                    id_print_side2 = f"{id_order_detail}-({j})-[2]"
+                    
+                    # Jika ada second_name, gunakan itu untuk sisi kedua
+                    # Jika tidak, gunakan nama yang sama dengan sisi pertama
+                    display_name = item['second_name'] if has_second_name else item['nama']
+                    
                     processed_path, output_filename, _, _, _ = process_image_file(
                         image_path=image_path,
-                        id_print=id_print,
+                        id_print=id_print_side2,
                         product_note=item['product_note'],
                         type_product=item['type_product'],
                         qty=item['qty'],
-                        nama=item['nama'],
-                        id_input=id_order,  # Tambahkan id_order sebagai id_input
+                        nama=display_name,
+                        id_input=id_order,
                         font_color=item.get('font_color', '#000000'),
-                        is_preview=False
+                        is_preview=False,
+                        is_side_one=False
                     )
-
+                    
+                    # Insert record untuk sisi kedua
                     cursor.execute("""
                         INSERT INTO print (id_print, id_order_detail, print_image_path, status)
                         VALUES (%s, %s, %s, %s)
                     """, (
-                        id_print,
+                        id_print_side2,
                         id_order_detail,
                         processed_path,
                         'belum_diprint'
@@ -112,9 +148,11 @@ def preview_order():
     data = request.json
     id_image = data.get('id_image')
     nama = data.get('nama')
+    second_name = data.get('second_name')
     qty = data.get('qty', 1)
     type_product = data.get('type_product')
     product_note = data.get('product_note', '')
+    side = data.get('side', 1)  # Default ke sisi 1
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -134,8 +172,20 @@ def preview_order():
         preview_dir = os.path.join('D:/assets/PREVIEW', ymd)
         os.makedirs(preview_dir, exist_ok=True)
         
-        # Generate unique preview ID
-        id_print = f"PREVIEW-{id_image}-{now.strftime('%H%M%S')}"
+        # Generate unique preview ID dengan tambahan side jika ada
+        timestamp = now.strftime('%H%M%S')
+        id_print = f"PREVIEW-{id_image}-{timestamp}-S{side}"
+        
+        # Tentukan apakah ini sisi pertama atau kedua
+        is_side_one = side == 1
+        is_two_sided = "2 SISI" in type_product.upper()
+        has_second_name = second_name and second_name.strip() != ''
+        
+        # Jika sisi kedua dan ada second_name, gunakan second_name sebagai nama
+        # Jika sisi kedua tapi tidak ada second_name, tetap gunakan nama
+        display_name = nama
+        if not is_side_one and is_two_sided and has_second_name:
+            display_name = second_name
         
         # Process image
         processed_path, output_filename, image_pil, dpi, icc_profile = process_image_file(
@@ -144,9 +194,10 @@ def preview_order():
             product_note=product_note,
             type_product=type_product,
             qty=qty,
-            nama=nama,
+            nama=display_name,
             font_color=data.get('font_color', '#000000'),
-            is_preview=True
+            is_preview=True,
+            is_side_one=is_side_one
         )
         
         if not output_filename:
@@ -169,8 +220,8 @@ def preview_order():
         
         # Save to preview table
         cursor.execute("""
-            INSERT INTO preview (id_image, id_print, preview_path, preview_url, product_note, type_product, qty, nama)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO preview (id_image, id_print, preview_path, preview_url, product_note, type_product, qty, nama, second_name, side)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             id_image,
             id_print,
@@ -179,7 +230,9 @@ def preview_order():
             product_note,
             type_product,
             qty,
-            nama
+            nama,
+            second_name,
+            side
         ))
         
         # Tambahkan URL alternatif jika ada lebih dari satu IP
@@ -195,7 +248,8 @@ def preview_order():
         return jsonify({
             "preview_url": preview_url,
             "id_print": id_print,
-            "message": "Preview berhasil dibuat"
+            "message": "Preview berhasil dibuat",
+            "side": side
         })
         
     except Exception as e:
